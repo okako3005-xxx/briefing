@@ -1,11 +1,11 @@
 {
-  "name": "朝ブリーフィング",
-  "short_name": "ブリーフィング",
-  "description": "毎朝の業界ニュースを自動取得するインテリジェンスダッシュボード",
+  "name": "DX関連ニュース",
+  "short_name": "DXニュース",
+  "description": "DX関連の最新ニュースを自動取得するインテリジェンスダッシュボード",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#08080d",
-  "theme_color": "#08080d",
+  "background_color": "#ffffff",
+  "theme_color": "#003E80",
   "orientation": "portrait",
   "icons": [
     {
