@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="朝ブリーフィング">
+<meta name="theme-color" content="#08080d">
+<meta name="description" content="毎朝の業界ニュースを自動取得するインテリジェンスダッシュボード">
+<title>🗞️ 朝ブリーフィング</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#08080d;--bg2:#0e0e16;--bg3:#14141e;
+  --text:#dddde5;--text2:#aaa;--text3:#666;--text4:#444;
+  --border:#181824;--border2:#1e1e2c;
+  --accent:#6f8fcf;--accent-bg:#161628;--accent-border:#282850;
+  --green:#6fcf6f;--green-bg:#0d1a0d;--green-border:#1a3a1a;
+  --red:#a06060;--red-border:#301818;
+  --yellow:#cfaf6f;--pink:#cf6faf;--cyan:#6fafaf;
+}
+body{font-family:'Noto Sans JP','Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;min-height:100dvh;overflow-x:hidden;padding-bottom:env(safe-area-inset-bottom)}
+input,select,textarea,button{font-family:inherit;outline:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:.4;transform:scale(.9)}50%{opacity:1;transform:scale(1.1)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;max-height:0}to{opacity:1;max-height:600px}}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#222;border-radius:4px}
+
+/* Loading */
+.load-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;gap:16px}
+.spinner{width:32px;height:32px;border:3px solid #222;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+
+/* Header */
+.header{padding:max(env(safe-area-inset-top),20px) 20px 0;background:linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);position:sticky;top:0;z-index:10}
+.header-inner{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;padding-bottom:14px}
+.title{font-size:20px;font-weight:700;color:#f0f0f5;display:flex;align-items:center;gap:8px}
+.title-icon{font-size:24px}
+.subtitle{font-size:10px;color:var(--text4);margin-top:5px;letter-spacing:.18em;font-weight:500}
+.stats{display:flex;gap:8px}
+.stat{text-align:center;padding:6px 12px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);min-width:48px}
+.stat-num{font-size:18px;font-weight:700;color:#f0f0f5}
+.stat-lbl{font-size:8px;color:var(--text3);margin-top:1px;letter-spacing:.12em;font-weight:600}
+
+/* Status bar */
+.status-bar{padding:10px 14px;border-radius:8px;border:1px solid;display:flex;align-items:center;gap:10px;margin-bottom:14px;animation:fadeIn .3s ease}
+.status-bar.info{background:#0d0d1f;border-color:#1a1a3a}
+.status-bar.ok{background:var(--green-bg);border-color:var(--green-border)}
+.status-bar.warn{background:#2a1a0a;border-color:#3a2a1a}
+.dot-pulse{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease-in-out infinite}
+.status-text{font-size:12px;color:var(--text2)}
+
+/* Setup screen */
+.setup{padding:60px 24px;text-align:center;max-width:400px;margin:0 auto}
+.setup h2{font-size:18px;margin-bottom:8px;color:#f0f0f5}
+.setup p{font-size:12px;color:var(--text3);line-height:1.8;margin-bottom:24px}
+.setup-input{width:100%;padding:12px 14px;font-size:13px;border:1px solid var(--border2);border-radius:8px;background:var(--bg);color:var(--text);margin-bottom:12px}
+.setup-btn{width:100%;padding:12px;font-size:14px;font-weight:600;border:none;border-radius:8px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);cursor:pointer}
+.setup-link{display:block;margin-top:16px;font-size:11px;color:var(--accent)}
+
+/* Controls */
+.controls{padding:12px 20px;border-bottom:1px solid var(--bg3);position:sticky;top:0;z-index:9;background:var(--bg)}
+.domain-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chip{padding:5px 12px;font-size:11px;border:1px solid var(--border2);border-radius:16px;background:transparent;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:all .15s}
+.chip.active{background:var(--accent-bg);color:#9aafe0;border-color:var(--accent-border)}
+.chip-badge{font-size:9px;background:rgba(255,255,255,.08);padding:1px 5px;border-radius:8px}
+.search-row{display:flex;gap:6px;margin-bottom:8px}
+.sel{padding:7px 10px;font-size:11px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:#bbb;min-width:100px}
+.search{flex:1;padding:7px 10px;font-size:11px;border:1px solid var(--border2);border-radius:6px;background:var(--bg2);color:#bbb;min-width:100px}
+.act-row{display:flex;gap:6px;flex-wrap:wrap}
+.act-btn{padding:6px 12px;font-size:11px;border:1px solid var(--accent-border);border-radius:6px;background:var(--accent-bg);color:#9aafe0;cursor:pointer}
+.refresh-btn{border-color:var(--green-border)!important;background:var(--green-bg)!important;color:var(--green)!important}
+.del-btn{padding:6px 12px;font-size:11px;border:1px solid var(--red-border);border-radius:6px;background:transparent;color:var(--red);cursor:pointer;margin-left:auto}
+
+/* Form */
+.form{margin:12px 20px;padding:16px;background:var(--bg2);border-radius:10px;border:1px solid var(--border);animation:fadeIn .3s ease}
+.form h3{font-size:13px;font-weight:600;margin-bottom:12px;color:#bbb}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.inp{padding:7px 10px;font-size:11px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:#bbb;width:100%}
+.ta{padding:7px 10px;font-size:11px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:#bbb;width:100%;resize:vertical;margin-bottom:6px;font-family:inherit}
+.save-btn{padding:7px 20px;font-size:12px;font-weight:600;border:none;border-radius:6px;background:var(--green-bg);color:var(--green);cursor:pointer;border:1px solid var(--green-border)}
+
+/* Cards */
+.list{padding:12px 20px 80px}
+.card{margin-bottom:10px;background:var(--bg2);border-radius:8px;border:1px solid var(--border);border-left:3px solid #333;overflow:hidden;animation:fadeIn .3s ease}
+.card-head{padding:12px 14px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.meta-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+.tag{font-size:9px;font-weight:700;padding:2px 9px;border-radius:10px;border:1px solid;letter-spacing:.04em;white-space:nowrap}
+.date-lbl{font-size:10px;color:var(--text3)}
+.src-lbl{font-size:10px;color:var(--text4);font-style:italic}
+.title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.card-title{font-size:13px;font-weight:600;color:var(--text);line-height:1.55}
+.arrow{font-size:13px;color:var(--text4);flex-shrink:0;margin-top:2px}
+.preview{font-size:11px;color:var(--text3);margin-top:5px;line-height:1.5}
+.card-body{padding:0 14px 14px;border-top:1px solid var(--border);margin-top:4px;padding-top:12px}
+.sec{margin-bottom:12px}
+.sales-box{margin-bottom:12px;padding:10px 12px;background:#0a160a;border-radius:6px;border:1px solid #1a2f1a}
+.sec-lbl{font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px}
+.sec-txt{font-size:12px;color:var(--text2);line-height:1.75;white-space:pre-wrap}
+.card-acts{display:flex;gap:8px;margin-top:10px}
+.link-btn{font-size:11px;color:var(--accent);text-decoration:none;padding:4px 10px;border-radius:5px;border:1px solid var(--accent-border);background:var(--accent-bg)}
+.rm-btn{font-size:11px;color:var(--red);padding:4px 10px;border-radius:5px;border:1px solid var(--red-border);background:transparent;cursor:pointer}
+
+/* Empty */
+.empty{text-align:center;padding:50px 20px}
+.empty-icon{font-size:36px;margin-bottom:16px}
+.empty-text{font-size:12px;color:var(--text3);line-height:1.8;max-width:300px;margin:0 auto}
+
+/* Footer */
+.footer{padding:16px 20px;text-align:center;border-top:1px solid var(--bg3)}
+.footer-text{font-size:10px;color:var(--text4)}
+
+/* Settings panel */
+.settings-toggle{position:fixed;bottom:20px;right:20px;width:44px;height:44px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;z-index:20;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.settings-panel{position:fixed;bottom:76px;right:20px;width:280px;padding:16px;background:var(--bg2);border-radius:12px;border:1px solid var(--border);z-index:20;animation:fadeIn .2s ease;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.settings-panel h3{font-size:13px;font-weight:600;color:#bbb;margin-bottom:12px}
+.settings-panel label{font-size:11px;color:var(--text3);display:block;margin-bottom:4px}
+.settings-panel input{width:100%;padding:8px 10px;font-size:11px;border:1px solid var(--border2);border-radius:6px;background:var(--bg);color:#bbb;margin-bottom:10px}
+.settings-panel button{padding:7px 16px;font-size:11px;font-weight:600;border:none;border-radius:6px;background:var(--green-bg);color:var(--green);cursor:pointer;border:1px solid var(--green-border);width:100%}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ─── State ───
+const STORAGE_KEY = "briefing_articles_v3";
+const API_KEY_KEY = "briefing_api_key";
+const DOMAINS = ["全て","建設業界","AI","DX","小売・卸売","その他"];
+const DOMAIN_COLORS = {
+  "建設業界":{bg:"#1a2f1a",text:"#6fcf6f",border:"#2d5a2d"},
+  "AI":{bg:"#1a1a2f",text:"#6f8fcf",border:"#2d2d5a"},
+  "DX":{bg:"#2f1a2a",text:"#cf6faf",border:"#5a2d4a"},
+  "小売・卸売":{bg:"#2f2a1a",text:"#cfaf6f",border:"#5a4a2d"},
+  "その他":{bg:"#1a2a2a",text:"#6fafaf",border:"#2d4a4a"},
+};
+
+let state = {
+  articles: [],
+  filter: "全て",
+  dateFilter: "",
+  searchQuery: "",
+  expandedId: null,
+  loading: true,
+  fetching: false,
+  fetchStatus: "",
+  showAddForm: false,
+  showSettings: false,
+  apiKey: localStorage.getItem(API_KEY_KEY) || "",
+};
+
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
+function setState(partial) {
+  Object.assign(state, partial);
+  render();
+}
+
+// ─── Storage ───
+function loadArticles() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+}
+function saveArticles(arts) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arts));
+}
+
+// ─── API ───
+const PROMPT = `あなたは日本の建設業界・AI・DX・小売/卸売業界に精通したビジネスインテリジェンスアナリストです。
+
+以下の条件で最新ニュースを5本選定し、必ず以下のJSON形式のみで回答してください。JSON以外のテキスト（前文、説明、マークダウン、バッククォート）は一切含めないでください。
+
+【選定条件】
+- 直近1週間以内の日本語ニュース
+- 配分目安：小売・卸売業界2本、AI2本、DX or 建設業界1本
+- 優先度：(1)燈のAkinai営業に直結(2)顧客の経営課題(3)商談アイスブレイク
+
+【JSON形式】
+[{"title":"タイトル","domain":"小売・卸売|AI|DX|建設業界|その他","source":"メディア名","url":"URL","summary":"3〜4文概要","background":"背景5〜8文","salesPoint":"営業接続ポイント1〜2文"}]`;
+
+async function fetchBriefing() {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": state.apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000,
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+      messages: [{ role: "user", content: `今日は${today()}です。\n\n${PROMPT}` }],
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err.error?.message || `API Error ${res.status}`);
+  }
+  const data = await res.json();
+  const texts = (data.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
+  if (!texts) throw new Error("応答なし");
+  const clean = texts.replace(/```json|```/g,"").trim();
+  const match = clean.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error("JSON解析失敗");
+  return JSON.parse(match[0]);
+}
+
+async function runAutoFetch() {
+  setState({ fetching: true, fetchStatus: "📡 Web検索中..." });
+  try {
+    const results = await fetchBriefing();
+    setState({ fetchStatus: "💾 保存中..." });
+    const newArts = results.map((r,i) => ({
+      ...r, id: `${Date.now()}-${i}`, date: today(), createdAt: new Date().toISOString(),
+    }));
+    const updated = [...newArts, ...state.articles];
+    saveArticles(updated);
+    setState({ articles: updated, fetching: false, fetchStatus: `✅ ${newArts.length}件取得完了` });
+    setTimeout(() => setState({ fetchStatus: "" }), 3000);
+  } catch (e) {
+    console.error(e);
+    setState({ fetching: false, fetchStatus: `⚠️ ${e.message}` });
+    setTimeout(() => setState({ fetchStatus: "" }), 8000);
+  }
+}
+
+// ─── Render ───
+function h(tag, attrs, ...children) {
+  const el = document.createElement(tag);
+  if (attrs) Object.entries(attrs).forEach(([k,v]) => {
+    if (k === "style" && typeof v === "object") Object.assign(el.style, v);
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === "className") el.className = v;
+    else if (k === "innerHTML") el.innerHTML = v;
+    else el.setAttribute(k, v);
+  });
+  children.flat(Infinity).forEach(c => {
+    if (c == null) return;
+    el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  });
+  return el;
+}
+
+function render() {
+  const app = document.getElementById("app");
+  app.innerHTML = "";
+
+  // No API key → setup screen
+  if (!state.apiKey) {
+    app.appendChild(renderSetup());
+    state.loading = false;
+    return;
+  }
+
+  if (state.loading) {
+    app.appendChild(h("div",{className:"load-wrap"},
+      h("div",{className:"spinner"}),
+      h("div",{className:"load-wrap",style:{color:"#666",fontSize:"13px"}},"読み込み中...")
+    ));
+    return;
+  }
+
+  app.appendChild(renderHeader());
+  app.appendChild(renderControls());
+  if (state.showAddForm) app.appendChild(renderForm());
+  app.appendChild(renderList());
+  app.appendChild(renderFooter());
+  app.appendChild(renderSettingsToggle());
+  if (state.showSettings) app.appendChild(renderSettingsPanel());
+}
+
+function renderSetup() {
+  let keyInput;
+  const wrap = h("div",{className:"setup"},
+    h("div",{style:{fontSize:"48px",marginBottom:"20px"}},"🗞️"),
+    h("h2",null,"朝ブリーフィング"),
+    h("p",null,"毎朝開くだけで最新の業界ニュースを自動取得。\nまずAPIキーを設定してください。"),
+    keyInput = h("input",{className:"setup-input",type:"password",placeholder:"sk-ant-api03-... を入力"}),
+    h("button",{className:"setup-btn",onClick:()=>{
+      const key = keyInput.value.trim();
+      if (!key) return;
+      localStorage.setItem(API_KEY_KEY, key);
+      state.apiKey = key;
+      init();
+    }},"設定して始める"),
+    h("a",{className:"setup-link",href:"https://console.anthropic.com/settings/keys",target:"_blank",rel:"noopener"},"APIキーの取得はこちら →")
+  );
+  return wrap;
+}
+
+function renderHeader() {
+  const todayArts = state.articles.filter(a=>a.date===today()).length;
+  const uniqueDates = [...new Set(state.articles.map(a=>a.date))].length;
+
+  const header = h("header",{className:"header"},
+    h("div",{className:"header-inner"},
+      h("div",null,
+        h("h1",{className:"title"},h("span",{className:"title-icon"},"🗞️"),"朝ブリーフィング"),
+        h("p",{className:"subtitle"},`DAILY INTELLIGENCE — ${today()}`)
+      ),
+      h("div",{className:"stats"},
+        ...[
+          [state.articles.length,"TOTAL"],
+          [uniqueDates,"DAYS"],
+          [todayArts,"TODAY"]
+        ].map(([n,l])=>h("div",{className:"stat"},h("div",{className:"stat-num"},String(n)),h("div",{className:"stat-lbl"},l)))
+      )
+    )
+  );
+
+  if (state.fetching || state.fetchStatus) {
+    const cls = state.fetchStatus.startsWith("✅") ? "ok" : state.fetchStatus.startsWith("⚠️") ? "warn" : "info";
+    const bar = h("div",{className:`status-bar ${cls}`});
+    if (state.fetching) bar.appendChild(h("div",{className:"dot-pulse"}));
+    bar.appendChild(h("span",{className:"status-text"},state.fetchStatus));
+    header.appendChild(bar);
+  }
+  return header;
+}
+
+function renderControls() {
+  const domainCounts = {};
+  state.articles.forEach(a=>{domainCounts[a.domain]=(domainCounts[a.domain]||0)+1});
+  const uniqueDates = [...new Set(state.articles.map(a=>a.date))].sort().reverse();
+
+  const ctrl = h("div",{className:"controls"});
+
+  // Domain chips
+  const dr = h("div",{className:"domain-row"});
+  DOMAINS.forEach(d=>{
+    const chip = h("button",{className:`chip${state.filter===d?" active":""}`,onClick:()=>setState({filter:d})},d);
+    if(d!=="全て"&&domainCounts[d]) chip.appendChild(h("span",{className:"chip-badge"},String(domainCounts[d])));
+    dr.appendChild(chip);
+  });
+  ctrl.appendChild(dr);
+
+  // Search
+  const sr = h("div",{className:"search-row"});
+  const sel = h("select",{className:"sel",onChange:e=>setState({dateFilter:e.target.value})});
+  sel.appendChild(h("option",{value:""},"全日付"));
+  uniqueDates.forEach(d=>{const o=h("option",{value:d},d);if(state.dateFilter===d)o.selected=true;sel.appendChild(o)});
+  sr.appendChild(sel);
+  const si = h("input",{className:"search",type:"text",placeholder:"キーワード検索...",value:state.searchQuery,onInput:e=>setState({searchQuery:e.target.value})});
+  sr.appendChild(si);
+  ctrl.appendChild(sr);
+
+  // Actions
+  const ar = h("div",{className:"act-row"});
+  ar.appendChild(h("button",{className:"act-btn",onClick:()=>setState({showAddForm:!state.showAddForm})},state.showAddForm?"✕ 閉じる":"＋ 手動追加"));
+  const rb = h("button",{className:"act-btn refresh-btn",onClick:()=>{if(!state.fetching)runAutoFetch()}},state.fetching?"取得中...":"🔄 今すぐ取得");
+  if(state.fetching) rb.style.opacity="0.5";
+  ar.appendChild(rb);
+  if(state.articles.length>0) ar.appendChild(h("button",{className:"del-btn",onClick:()=>{state.articles=[];saveArticles([]);render()}},"全件クリア"));
+  ctrl.appendChild(ar);
+
+  return ctrl;
+}
+
+function renderForm() {
+  const na = {date:today(),title:"",domain:"小売・卸売",source:"",url:"",summary:"",background:"",salesPoint:""};
+  const form = h("div",{className:"form"});
+  form.appendChild(h("h3",null,"記事を手動追加"));
+  const grid = h("div",{className:"form-grid"});
+  const dateInp = h("input",{className:"inp",type:"date",value:na.date,onInput:e=>{na.date=e.target.value}});
+  const domSel = h("select",{className:"inp",onChange:e=>{na.domain=e.target.value}});
+  DOMAINS.filter(d=>d!=="全て").forEach(d=>{const o=h("option",{value:d},d);if(d==="小売・卸売")o.selected=true;domSel.appendChild(o)});
+  const srcInp = h("input",{className:"inp",placeholder:"ソース",onInput:e=>{na.source=e.target.value}});
+  const urlInp = h("input",{className:"inp",placeholder:"URL",onInput:e=>{na.url=e.target.value}});
+  grid.append(dateInp,domSel,srcInp,urlInp);
+  form.appendChild(grid);
+  const titleInp = h("input",{className:"inp",placeholder:"タイトル *",style:{marginBottom:"8px"},onInput:e=>{na.title=e.target.value}});
+  const sumTa = h("textarea",{className:"ta",placeholder:"概要",rows:"2",onInput:e=>{na.summary=e.target.value}});
+  const bgTa = h("textarea",{className:"ta",placeholder:"背景・なぜ重要か",rows:"2",onInput:e=>{na.background=e.target.value}});
+  const spTa = h("textarea",{className:"ta",placeholder:"💡 営業接続ポイント",rows:"2",onInput:e=>{na.salesPoint=e.target.value}});
+  const saveBtn = h("button",{className:"save-btn",onClick:()=>{
+    if(!na.title.trim())return;
+    const art = {...na,id:String(Date.now()),createdAt:new Date().toISOString()};
+    state.articles.unshift(art);
+    saveArticles(state.articles);
+    setState({showAddForm:false});
+  }},"保存");
+  form.append(titleInp,sumTa,bgTa,spTa,saveBtn);
+  return form;
+}
+
+function renderList() {
+  const filtered = state.articles.filter(a=>{
+    if(state.filter!=="全て"&&a.domain!==state.filter)return false;
+    if(state.dateFilter&&a.date!==state.dateFilter)return false;
+    if(state.searchQuery){
+      const q=state.searchQuery.toLowerCase();
+      return [a.title,a.summary,a.salesPoint,a.source].some(f=>(f||"").toLowerCase().includes(q));
+    }
+    return true;
+  });
+
+  const list = h("div",{className:"list"});
+  if(filtered.length===0){
+    list.appendChild(h("div",{className:"empty"},
+      h("div",{className:"empty-icon"},state.fetching?"⏳":"📭"),
+      h("p",{className:"empty-text"},
+        state.fetching?"ニュースを自動取得中..."
+        :state.articles.length===0?'まだ記事がありません。自動取得を待つか「🔄 今すぐ取得」を押してください。'
+        :"条件に一致する記事がありません。")
+    ));
+    return list;
+  }
+
+  filtered.forEach(article=>{
+    const c = DOMAIN_COLORS[article.domain]||DOMAIN_COLORS["その他"];
+    const isExp = state.expandedId===article.id;
+
+    const card = h("div",{className:"card",style:{borderLeftColor:c.border}});
+    const head = h("div",{className:"card-head",onClick:()=>setState({expandedId:isExp?null:article.id})});
+    const meta = h("div",{className:"meta-row"});
+    meta.appendChild(h("span",{className:"tag",style:{backgroundColor:c.bg,color:c.text,borderColor:c.border}},article.domain));
+    meta.appendChild(h("span",{className:"date-lbl"},article.date));
+    if(article.source) meta.appendChild(h("span",{className:"src-lbl"},article.source));
+    head.appendChild(meta);
+
+    const tr = h("div",{className:"title-row"});
+    tr.appendChild(h("h3",{className:"card-title"},article.title));
+    tr.appendChild(h("span",{className:"arrow"},isExp?"▾":"▸"));
+    head.appendChild(tr);
+
+    if(!isExp&&article.summary){
+      const prev = article.summary.slice(0,90)+(article.summary.length>90?"...":"");
+      head.appendChild(h("p",{className:"preview"},prev));
+    }
+    card.appendChild(head);
+
+    if(isExp){
+      const body = h("div",{className:"card-body"});
+      if(article.summary) body.appendChild(h("div",{className:"sec"},h("div",{className:"sec-lbl"},"概要"),h("p",{className:"sec-txt"},article.summary)));
+      if(article.background) body.appendChild(h("div",{className:"sec"},h("div",{className:"sec-lbl"},"背景・なぜ重要か"),h("p",{className:"sec-txt"},article.background)));
+      if(article.salesPoint) body.appendChild(h("div",{className:"sales-box"},h("div",{className:"sec-lbl"},"💡 営業接続ポイント"),h("p",{className:"sec-txt"},article.salesPoint)));
+      const acts = h("div",{className:"card-acts"});
+      if(article.url) acts.appendChild(h("a",{className:"link-btn",href:article.url,target:"_blank",rel:"noopener noreferrer"},"元記事 ↗"));
+      acts.appendChild(h("button",{className:"rm-btn",onClick:e=>{
+        e.stopPropagation();
+        state.articles=state.articles.filter(a=>a.id!==article.id);
+        saveArticles(state.articles);
+        render();
+      }},"削除"));
+      body.appendChild(acts);
+      card.appendChild(body);
+    }
+    list.appendChild(card);
+  });
+  return list;
+}
+
+function renderFooter() {
+  return h("div",{className:"footer"},h("p",{className:"footer-text"},"毎朝開くだけで自動取得 ｜ データはローカルに保存"));
+}
+
+function renderSettingsToggle() {
+  return h("button",{className:"settings-toggle",onClick:()=>setState({showSettings:!state.showSettings})},"⚙️");
+}
+
+function renderSettingsPanel() {
+  let keyInp;
+  const panel = h("div",{className:"settings-panel"},
+    h("h3",null,"⚙️ 設定"),
+    h("label",null,"APIキー"),
+    keyInp = h("input",{type:"password",value:state.apiKey,placeholder:"sk-ant-api03-..."}),
+    h("button",{onClick:()=>{
+      const key = keyInp.value.trim();
+      if(key){
+        localStorage.setItem(API_KEY_KEY,key);
+        state.apiKey = key;
+      }
+      setState({showSettings:false});
+    }},"保存して閉じる")
+  );
+  return panel;
+}
+
+// ─── Init ───
+async function init() {
+  state.articles = loadArticles();
+  state.loading = false;
+  render();
+
+  if(!state.apiKey) return;
+
+  const hasTodayData = state.articles.some(a=>a.date===today());
+  if(!hasTodayData){
+    runAutoFetch();
+  }
+}
+
+init();
+
+// ─── Service Worker ───
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+</body>
+</html>
